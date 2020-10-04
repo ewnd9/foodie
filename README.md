@@ -8,5 +8,6 @@ $ yarn install
 
 ```sh
 $ yarn start login
-$ yarn start
+$ yarn start update
+$ yarn start stats
 ```
