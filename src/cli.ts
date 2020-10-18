@@ -74,6 +74,11 @@ async function update() {
 }
 
 async function stats() {
+  await statsExpiration();
+  await statsTotalSum();
+}
+
+async function statsTotalSum() {
   const { orders } = persistedData;
 
   let total = 0;
@@ -88,4 +93,46 @@ async function stats() {
       orders[0].created_at
     }, last ${orders[orders.length - 1].created_at}`
   );
+}
+
+async function statsExpiration() {
+  const { orders } = persistedData;
+
+  for (const order of orders) {
+    const lines = [];
+    order.cart.items.forEach((item) => {
+      const patterns = [
+        {
+          regex: /Срок хранения, ([а-яА-Я]+): ([\d]+)(\.|$)/,
+          map: (match) => ({ count: match[2], unit: match[1] }),
+        },
+        {
+          regex: /Срок хранения: ([\d]+) ([а-яА-Я]+)(\.|$)/,
+          map: (match) => ({ count: match[1], unit: match[2] }),
+        },
+      ];
+
+      let line: null | string = null;
+
+      for (const { regex, map } of patterns) {
+        const match = regex.exec(item.description);
+
+        if (match) {
+          const { count, unit } = map(match);
+          line = `${item.name} - ${count} ${unit}`;
+          break;
+        }
+      }
+
+      if (line) {
+        lines.push(line);
+      } else if (item.description.toLowerCase().includes('срок хранения')) {
+        lines.push(`unknown expiration pattern: ${item.description}`);
+      }
+    });
+
+    if (lines.length > 0) {
+      console.log(`${new Date(order.cart.updated_at)}\n${lines.join('\n')}\n`);
+    }
+  }
 }
